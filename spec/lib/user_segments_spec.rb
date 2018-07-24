@@ -190,4 +190,58 @@ describe UserSegments do
     end
   end
 
+  describe "#beta_testers" do
+    let(:beta_testers) do
+      %w(aranacm@madrid.es bertocq@gmail.com mariajecheca@gmail.com
+       alberto@decabeza.es voodoorai2000@gmail.com)
+    end
+
+    before do
+      beta_testers.each { |beta_tester| create(:user, email: beta_tester) }
+    end
+
+    it "returns only users with specific emails" do
+      expect(described_class.beta_testers.count).to eq(5)
+      expect(described_class.beta_testers.pluck(:email)).to match_array(beta_testers)
+    end
+  end
+
+  context "Geozones" do
+
+    let!(:new_york) { create(:geozone, name: "New York") }
+    let!(:california) { create(:geozone, name: "California") }
+    let!(:mars) { create(:geozone, name: "Mars") }
+
+    let(:user1) { create(:user, geozone: new_york) }
+    let(:user2) { create(:user, geozone: new_york) }
+    let(:user3) { create(:user, geozone: california) }
+    let(:user4) { create(:user, geozone: mars) }
+
+    before do
+      load 'lib/user_segments.rb'
+    end
+
+    it "dynamically generates user segments for all geozones" do
+      expect(described_class).to respond_to("new_york")
+      expect(described_class).to respond_to("california")
+      expect(described_class).to respond_to("mars")
+      expect(described_class).to_not respond_to("jupiter")
+    end
+
+    it "returns users of a geozone" do
+      expect(described_class.new_york).to include(user1)
+      expect(described_class.new_york).to include(user2)
+      expect(described_class.new_york).to_not include(user3)
+      expect(described_class.new_york).to_not include(user4)
+    end
+
+    it "only returns active users of a geozone" do
+      user2.update(erased_at: Time.current)
+
+      expect(described_class.new_york).to include(user1)
+      expect(described_class.new_york).to_not include(user2)
+    end
+
+  end
+
 end
